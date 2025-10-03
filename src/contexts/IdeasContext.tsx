@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './AuthContext';
-import { OpenAI } from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export interface IdeaScore {
   marketAnalysis: number;
@@ -60,10 +60,9 @@ export const useIdeas = () => {
 };
 
 // Initialize OpenAI Client (Google Gemini via OpenRouter)
-const client = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: import.meta.env.VITE_OPENROUTER_API_KEY,
-  dangerouslyAllowBrowser: true
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({
+  model: import.meta.env.VITE_GEMINI_MODEL || "gemini-2.5-flash",
 });
 
 export const IdeasProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -255,19 +254,12 @@ export const IdeasProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }
     }`;
   
-    console.log("Prompt:", prompt);
+    // console.log("Prompt:", prompt);
     try {
-      const completion = await client.chat.completions.create({
-        extraHeaders: {
-          "HTTP-Referer": import.meta.env.VITE_SITE_URL,
-          "X-Title": import.meta.env.VITE_SITE_NAME,
-        },
-        model: "google/gemini-2.0-pro-exp-02-05:free",
-        messages: [{ role: "user", content: prompt }],
-      });
+      const result = await model.generateContent(prompt);
   
       // Extract and parse AI response
-    const aiResponse = completion.choices?.[0]?.message?.content;
+    const aiResponse = result.response.text();
     if (!aiResponse) {
       throw new Error("Invalid AI response");
     }
